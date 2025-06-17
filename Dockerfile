@@ -2,21 +2,23 @@ FROM python:3.9-alpine3.13
 
 LABEL maintainer="Ijong Maxwell"
 
-ENV PYTHONUNBUFFERED=1
+ENV PYTHONUNBUFFERED=1 \
+    PATH="/py/bin:$PATH" \
+    PIP_NO_CACHE_DIR=off
 
-# Copy the application code into the container
+ARG DEV=false
+
+# Copy requirement files
 COPY ./requirements.txt /tmp/requirements.txt
 COPY ./requirements.dev.txt /tmp/requirements.dev.txt
 
-# This assumes your application code is in a directory named 'app'
+# Copy app source
 COPY ./app /app
-
 
 WORKDIR /app
 EXPOSE 8000
 
-ARG DEV=false
-# Install system dependencies and Python packages
+# Install base system dependencies and virtualenv
 RUN apk add --no-cache \
     build-base \
     linux-headers \
@@ -24,27 +26,26 @@ RUN apk add --no-cache \
     musl-dev \
     libffi-dev \
     openssl-dev \
-    && \
-    apk add --no-cache --virtual .build-deps gcc musl-dev libffi-dev openssl-dev postgresql-dev && \
-    apk add --no-cache libpq && \
-    apk add --no-cache bash
-RUN python -m venv /py && \
-    /py/bin/pip install --upgrade pip && \
-    apk add --update --no-cache postgresql-client && \
-    apk add --update --no-cache --virtual .tmp-build-deps \
-        build-base postgresql-dev musl-dev && \
-    /py/bin/pip install -r /tmp/requirements.txt && \
-     if [ $DEV = "true" ]; \
-        then /py/bin/pip install -r /tmp/requirements.dev.txt ; \
-    fi && \
-    rm -rf /tmp && \
-    apk del .tmp-build-deps && \
-    apk del .build-deps && \
-    adduser \
-        --disabled-password \
-        --no-create-home \
-        django-user
+    libpq \
+    bash \
+    postgresql-client && \
+    python -m venv /py && \
+    /py/bin/pip install --upgrade pip
 
-ENV PATH="/py/bin:$PATH"
+# Install Python dependencies
+RUN set -ex && \
+    /py/bin/pip install -r /tmp/requirements.txt && \
+    if [ "$DEV" = "true" ]; then \
+        /py/bin/pip install -r /tmp/requirements.dev.txt; \
+    fi && \
+    rm -rf /tmp
+
+# Create non-root user
+RUN adduser \
+    --disabled-password \
+    --no-create-home \
+    django-user
 
 USER django-user
+
+
