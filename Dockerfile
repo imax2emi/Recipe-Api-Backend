@@ -15,6 +15,19 @@ COPY ./app /app
 WORKDIR /app
 EXPOSE 8000
 
+ARG DEV=false
+# Install system dependencies and Python packages
+RUN apk add --no-cache \
+    build-base \
+    linux-headers \
+    postgresql-dev \
+    musl-dev \
+    libffi-dev \
+    openssl-dev \
+    && \
+    apk add --no-cache --virtual .build-deps gcc musl-dev libffi-dev openssl-dev postgresql-dev && \
+    apk add --no-cache libpq && \
+    apk add --no-cache bash
 RUN python -m venv /py && \
     /py/bin/pip install --upgrade pip && \
     /py/bin/pip install -r /tmp/requirements.txt && \
