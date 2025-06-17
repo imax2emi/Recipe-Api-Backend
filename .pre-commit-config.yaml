@@ -1,7 +1,13 @@
 # .pre-commit-config.yaml
 repos:
+  - repo: https://github.com/psf/black
+    rev: 24.3.0
+    hooks:
+      - id: black
+
   - repo: https://github.com/pycqa/flake8
-    rev: 6.1.0  # Use latest stable version
+    rev: 6.1.0
     hooks:
       - id: flake8
-        additional_dependencies: []
+      - id: flake8-docstrings
+        additional_dependencies: [flake8-docstrings==1.7.0]
