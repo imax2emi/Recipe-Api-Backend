@@ -1,51 +1,31 @@
 FROM python:3.9-alpine3.13
-
 LABEL maintainer="Ijong Maxwell"
 
-ENV PYTHONUNBUFFERED=1 \
-    PATH="/py/bin:$PATH" \
-    PIP_NO_CACHE_DIR=off
+ENV PYTHONUNBUFFERED 1
 
-ARG DEV=false
-
-# Copy requirement files
 COPY ./requirements.txt /tmp/requirements.txt
 COPY ./requirements.dev.txt /tmp/requirements.dev.txt
-
-# Copy app source
 COPY ./app /app
-
 WORKDIR /app
 EXPOSE 8000
 
-# Install base system dependencies and virtualenv
-RUN apk add --no-cache \
-    build-base \
-    linux-headers \
-    postgresql-dev \
-    musl-dev \
-    libffi-dev \
-    openssl-dev \
-    libpq \
-    bash \
-    postgresql-client && \
-    python -m venv /py && \
-    /py/bin/pip install --upgrade pip
-
-# Install Python dependencies
-RUN set -ex && \
+ARG DEV=false
+RUN python -m venv /py && \
+    /py/bin/pip install --upgrade pip && \
+    apk add --update --no-cache postgresql-client && \
+    apk add --update --no-cache --virtual .tmp-build-deps \
+        build-base postgresql-dev musl-dev && \
     /py/bin/pip install -r /tmp/requirements.txt && \
-    if [ "$DEV" = "true" ]; then \
-        /py/bin/pip install -r /tmp/requirements.dev.txt; \
+    if [ $DEV = "true" ]; \
+        then /py/bin/pip install -r /tmp/requirements.dev.txt ; \
     fi && \
-    rm -rf /tmp
+    rm -rf /tmp && \
+    apk del .tmp-build-deps && \
+    adduser \
+        --disabled-password \
+        --no-create-home \
+        django-user
 
-# Create non-root user
-RUN adduser \
-    --disabled-password \
-    --no-create-home \
-    django-user
+ENV PATH="/py/bin:$PATH"
 
 USER django-user
-
-
