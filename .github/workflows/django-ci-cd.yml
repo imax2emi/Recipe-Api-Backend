@@ -43,22 +43,26 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-buildx-
 
-      - name: Test
+      - name: Create test reports directory
+        run: mkdir -p test-reports
+
+      - name: Run tests
         run: |
-          docker compose run --rm app sh -c "python manage.py wait_for_db && python manage.py test"
+          docker compose run --rm app sh -c "python manage.py wait_for_db && python manage.py test --parallel --noinput --verbosity=2"
         env:
           DATABASE_URL: postgres://postgres:postgres@postgres:5432/test_db
 
-      - name: Lint
+      - name: Run linting
         run: |
-          docker compose run --rm app sh -c "flake8 --config=.flake8 || echo 'Linting failed'"
+          docker compose run --rm app sh -c "flake8 --config=.flake8" || echo "Linting failed"
         continue-on-error: true
 
       - name: Upload test artifacts
         if: always()
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: test-reports
           path: |
-            test-reports/
+            test-reports/**/*
             coverage.xml
+          retention-days: 7
